@@ -20,7 +20,7 @@ class Func(object):
 
         self.lqc = lqc
         self.f_init, self.f_nh, self.f_na, self.f_ns, \
-            self.f_mo, self.f_pws, self.f_one, self.f_ce = fs
+            self.f_mo, self.f_pws, self.f_one, self.f_ce, self.f_next = fs
 
         self.ifvalid, self.ifbatch, self.ifscore, self.ifnorm, self.ifmv, self.ifwatch_adist, \
             self.merge_way, self.ifapprox_dist, self.ifapprox_att, self.ifadd_lmscore = switchs
@@ -57,6 +57,9 @@ class Func(object):
         self.lqc[7] += 1
         return self.f_ce(sci)
 
+    def fn_next(self, y_im1, ctx, s_im1):
+        self.lqc[7] += 1
+        return self.f_ce(*[y_im1, ctx, s_im1])
 
 class NBS(Func):
 

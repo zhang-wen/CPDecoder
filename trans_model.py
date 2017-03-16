@@ -425,6 +425,20 @@ so, the length of state_below and mask_below (which is trg_sent_len-1) can not b
             merge_out = T.tanh(merge_out)
         return merge_out
 
+    def next_state_mout(self, y_emb_im1, s_im1, ctx, c_x):
+
+        next_state, attended = self._step_forward_with_attention(
+            x_t=y_emb_im1,
+            x_m=None,
+            h_tm1=s_im1,
+            c=ctx,
+            c_mask=None,
+            c_x=c_x
+        )
+
+        merge_out = self.merge_out(y_emb_im1, next_state, attended)
+
+        return next_state, merge_out
 
 class Translate(object):
 
@@ -576,7 +590,20 @@ class Translate(object):
         # ctx:  (src_sent_len, live_k, src_nhids*2)
         # t_stat_im1:           shape(k-dead_k, trg_nhids)
         # probs:  shape(k-dead_k, trg_vocab_size)
-        return [f_init, f_nh, f_na, f_ns, f_mo, f_pws, f_one, f_ce]
+
+        # f_next .................
+        next_probs, next_state = self.next_prob_state(y_emb_im1, t_stat_im1, ctx, c_x)
+
+        inps = [y_im1, ctx, t_stat_im1]
+        outs = [next_probs, next_state]
+        f_next = theano.function(inps, outs, name='f_next')
+
+        return [f_init, f_nh, f_na, f_ns, f_mo, f_pws, f_one, f_ce, f_next]
+
+    def next_prob_state(self, y_emb_im1, s_im1, ctx, c_x):
+        next_state, merge_out = self.decoder.next_state_mout(y_emb_im1, s_im1, ctx, c_x)
+        prob = self.logistic.apply(merge_out)
+        return prob, next_state
 
     def savez(self, filename):
         params_value = OrderedDict([(kk, value.get_value())

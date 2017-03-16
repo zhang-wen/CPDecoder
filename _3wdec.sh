@@ -26,7 +26,7 @@ THEANO_FLAGS=mode=FAST_RUN,device=gpu3,floatX=float32,lib.cnmem=2000 python wtra
 		--use-mv 0 \
 		--ifwatch-adist 0 \
 		--merge-way 'Him1' \
-        --ifapprox-dist 0 \
+        --ifapprox-dist 1 \
         --ifapprox-att 0 \
         --ifadd-lmscore 0 \
 		--m-threshold 10000.0 \

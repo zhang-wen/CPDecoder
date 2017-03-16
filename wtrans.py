@@ -250,7 +250,7 @@ if __name__ == "__main__":
     trans = Translate(**config)
     _log('done')
 
-    _log('build decode funcs: f_init f_nh f_na f_ns f_mo f_ws f_ps f_ce ... ', nl=False)
+    _log('build decode funcs: f_init f_nh f_na f_ns f_mo f_ws f_ps f_ce f_next... ', nl=False)
     fs = trans.build_sample()
     _log('done')
 
@@ -304,6 +304,11 @@ if __name__ == "__main__":
     e = time.time()
     tp = (e - s)
 
+    s = time.time()
+    p = fs[8](*[y_im1, ctx, s_im1])
+    e = time.time()
+    tnext = (e - s)
+
     total = tinit + thi + tai + tsi + tmo + tvs + tp
     debug('{:16} {:7} {}%'.format('init', format(tinit, '0.4f'), (tinit / total) * 100))
     debug('{:16} {:7} {}%'.format('first hidden', format(thi, '0.4f'), (thi / total) * 100))
@@ -314,6 +319,7 @@ if __name__ == "__main__":
     debug('{:16} {:7} {}%'.format('softmax', format(tp, '0.4f'), (tp / total) * 100))
 
     debug('{:15} {:7}'.format('one slice scores', format(tps, '0.4f')))
+    debug('{:15} {:7}'.format('f_next', format(tnext, '0.4f')))
 
     debug('\tload source and target vocabulary ...')
     src_vocab = pickle.load(open(config['src_vocab']))

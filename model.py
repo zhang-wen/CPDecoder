@@ -110,6 +110,16 @@ class LogisticRegression(object):
         # when decoding, the logit.ndim is 2 (1 or beam_size, voc_size)
         return logit
 
+    def apply(self, input):
+
+        input = input * (1-self.drop_rate)
+        energy = theano.dot(input, self.W0) + self.b
+        if energy.ndim == 3:
+            energy = energy.reshape([energy.shape[0]*energy.shape[1], energy.shape[2]])
+        p_y_given_x = T.nnet.softmax(energy)
+
+        return p_y_given_x
+
     def apply_score(self, input, v_part=None, drop=False):
         # input: (trg_sent_len, batch_size, n_out) for training
         #        (1 or beamsize, n_out) for decoding
