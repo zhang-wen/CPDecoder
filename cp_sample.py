@@ -30,24 +30,25 @@ class Translator(object):
         self.wcp = WCP(fs, switchs, bos_idx, ngram, tvcb, tvcb_i2w, k, thresh, lm, ptv)
 
     def trans_onesent(self, s):
+        avg_merges = 0.
         if self.mode == 0:
             trans = mle_trans(s, fs, switchs, trg_vocab_i2w, k=k)
         elif self.mode == 1:
-            self.ori.lqc = [0] * 10
+            self.ori.lqc = [0] * 11
             trans = self.ori.original_trans(s)
         elif self.mode == 2:
-            self.nbs.lqc = [0] * 10
+            self.nbs.lqc = [0] * 11
             trans = self.nbs.beam_search_trans(s)
         elif self.mode == 3:
-            self.wcp.lqc = [0] * 10
+            self.wcp.lqc = [0] * 11
             self.wcp.locrt = [0] * 2
             self.wcp.onerow_subcube_cnt = 0
             self.wcp.push_cnt = 0
             self.wcp.pop_cnt = 0
             self.wcp.down_pop_cnt = 0
             self.wcp.right_pop_cnt = 0
-            trans = self.wcp.cube_prune_trans(s)
-        return trans
+            avg_merges, trans = self.wcp.cube_prune_trans(s)
+        return avg_merges, trans
 
     def trans_samples(self, srcs, trgs):
         for index in range(len(srcs)):
@@ -62,21 +63,24 @@ class Translator(object):
             t_filter = filter(lambda x: x != 0, trgs[index])
             _log('[{:3}] {}'.format('ref', _index2sentence(t_filter, self.tvcb_i2w)))
 
-            trans = self.trans_onesent(s_filter)
+            _, trans = self.trans_onesent(s_filter)
 
             _log('[{:3}] {}\n'.format('out', trans))
 
     @exeTime
     def single_trans_valid(self, x_iter):
         total_trans = []
+        total_avg_merge_rate, total_sent_num = 0., 0
         for idx, line in enumerate(x_iter):
             s_filter = filter(lambda x: x != 0, line)
-            trans = self.trans_onesent(s_filter)
+            avg_merges, trans = self.trans_onesent(s_filter)
+            total_avg_merge_rate += avg_merges
+            total_sent_num += 1
             total_trans.append(trans)
             if numpy.mod(idx + 1, 10) == 0:
                 _log('Sample {} Done'.format((idx + 1)))
         _log('Done ...')
-        return '\n'.join(total_trans)
+        return total_avg_merge_rate / total_sent_num, '\n'.join(total_trans)
 
     def translate(self, queue, rqueue, pid):
 
@@ -88,7 +92,7 @@ class Translator(object):
             idx, src = req[0], req[1]
             _log('{}-{}'.format(pid, idx))
             s_filter = filter(lambda x: x != 0, src)
-            trans = self.trans_onesent(s_filter)
+            _, trans = self.trans_onesent(s_filter)
 
             rqueue.put((idx, trans))
 

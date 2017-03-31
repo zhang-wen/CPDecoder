@@ -408,7 +408,7 @@ if __name__ == "__main__":
     # trans sentece
     viter = dev_stream.get_epoch_iterator()
 
-    trans = translator.single_trans_valid(viter)
+    avg_merges_rate, trans = translator.single_trans_valid(viter)
     # trans = translator.multi_process(viter, n_process=nprocess)
 
     outdir = args.workspace
@@ -448,7 +448,7 @@ if __name__ == "__main__":
     sfig = '{}.{}'.format(outprefix, 'sfig')
     # sfig_content = str(eidx) + ' ' + str(uidx) + ' ' + str(mteval_bleu) + ' ' + \
     #    str(multi_bleu) + ' ' + str(ori_mteval_bleu) + ' ' + str(ori_multi_bleu)
-    sfig_content = ('{} {} {} {} {} {} {} {} {}').format(
+    sfig_content = ('{} {} {} {} {} {} {} {} {} {}').format(
         alpha,
         beta,
         epoch,
@@ -457,7 +457,8 @@ if __name__ == "__main__":
         beam_size,
         kl,
         mteval_bleu,
-        multi_bleu
+        multi_bleu,
+        avg_merges_rate
     )
     append_file(sfig, sfig_content)
 

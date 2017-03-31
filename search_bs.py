@@ -58,15 +58,15 @@ class Func(object):
         return self.f_ce(sci)
 
     def fn_next(self, y_im1, ctx, s_im1):
-        self.lqc[7] += 1
-        return self.f_ce(*[y_im1, ctx, s_im1])
+        self.lqc[8] += 1
+        return self.f_next(*[y_im1, ctx, s_im1])
 
 class NBS(Func):
 
     def __init__(self, fs, switchs, bos_id=0, tvcb=None, tvcb_i2w=None,
                  k=10, ptv=None, ln_alpha=0., cp_beta=0.):
 
-        self.lqc = [0] * 10
+        self.lqc = [0] * 11
         super(NBS, self).__init__(self.lqc, fs, switchs)
 
         self.tvcb = tvcb
@@ -138,7 +138,7 @@ class NBS(Func):
 
         _log('@source[{}], translation(without eos)[{}], maxlen[{}], loss[{}]'.format(
             src_sent_len, len(best_trans), self.maxlen, loss))
-        _log('init[{}] nh[{}] na[{}] ns[{}] mo[{}] ws[{}] ps[{}] ce[{}]'.format(*self.lqc[0:8]))
+        _log('init[{}] nh[{}] na[{}] ns[{}] mo[{}] ws[{}] ps[{}] ce[{}] next[{}]'.format(*self.lqc[0:9]))
 
         return _filter_reidx(self.bos_id, self.eos_id, best_trans, self.tvcb_i2w,
                              self.ifmv, self.ptv)

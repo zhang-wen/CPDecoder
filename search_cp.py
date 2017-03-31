@@ -21,7 +21,7 @@ class WCP(Func):
     def __init__(self, fs, switchs, bos_id=0, ngram=3, tvcb=None, tvcb_i2w=None, k=10, thresh=100.0,
                  lm=None, ptv=None):
 
-        self.lqc = [0] * 10
+        self.lqc = [0] * 11
         super(WCP, self).__init__(self.lqc, fs, switchs)
 
         self.cnt = count()
@@ -67,20 +67,21 @@ class WCP(Func):
 
         best_trans, best_loss = self.cube_pruning()
 
-        _log('@source[{}], translation(without eos)[{}], maxlen[{}], loss[{}]'.format(
-            src_sent_len, len(best_trans), self.maxlen, best_loss))
-        _log('init[{}] nh[{}] na[{}] ns[{}] mo[{}] ws[{}] ps[{}] ce[{}]'.format(*self.lqc[0:8]))
+        #_log('@source[{}], translation(without eos)[{}], maxlen[{}], loss[{}]'.format(
+        #    src_sent_len, len(best_trans), self.maxlen, best_loss))
+        #_log('init[{}] nh[{}] na[{}] ns[{}] mo[{}] ws[{}] ps[{}] ce[{}] next[{}]'.format(*self.lqc[0:9]))
 
-        avg_merges = format(self.lqc[9] / self.lqc[8], '0.3f')
-        _log('average merge count[{}/{}={}]'.format(self.lqc[9],
-                                                   self.lqc[8], avg_merges))
-        _log('push count {}'.format(self.push_cnt))
-        _log('pop count {}'.format(self.pop_cnt))
-        _log('down pop count {}'.format(self.down_pop_cnt))
-        _log('right pop count {}'.format(self.right_pop_cnt))
-        _log('one row subcube count {}'.format(self.onerow_subcube_cnt))
+        avg_merges = self.lqc[10] / self.lqc[9]
+        #avg_merges = format(self.lqc[10] / self.lqc[9], '0.3f')
+        #_log('average merge count[{}/{}={}]'.format(self.lqc[10],
+        #                                           self.lqc[9], avg_merges))
+        #_log('push count {}'.format(self.push_cnt))
+        #_log('pop count {}'.format(self.pop_cnt))
+        #_log('down pop count {}'.format(self.down_pop_cnt))
+        #_log('right pop count {}'.format(self.right_pop_cnt))
+        #_log('one row subcube count {}'.format(self.onerow_subcube_cnt))
 
-        return _filter_reidx(self.bos_id, self.eos_id, best_trans, self.tvcb_i2w,
+        return avg_merges, _filter_reidx(self.bos_id, self.eos_id, best_trans, self.tvcb_i2w,
                              self.ifmv, self.ptv)
 
     ##################################################################
@@ -314,6 +315,11 @@ class WCP(Func):
             cube.append(subcube)
             self.subcube_lines_cache.append(subcube_line_cache)
 
+            self.printCube(cube)
+
+        return cube
+
+    def printCube(self, cube):
         # print created cube before generating current beam for debug ...
         debug('\n################################ CUBE ################################')
         nsubcube = len(cube)
@@ -347,7 +353,79 @@ class WCP(Func):
                 debug('')
         debug('######################################################################')
 
+    ##################################################################
+
+    # NOTE: (Wen Zhang) create cube in batch
+
+    ##################################################################
+
+    #@exeTime
+    def create_cube_batch(self, bidx, eq_classes):
+        # eq_classes: (score_im1, y_im1, hi, ai, loc_in_prevb) NEW
+        cube = []
+        cnt_transed = len(self.translations)
+        batch_y_im1, batch_s_im1 = [], []
+        for whichsubcub, leq_class in eq_classes.iteritems():   # sub cube
+
+            each_subcube_rowsz = len(leq_class)
+            self.prev_beam_ptrs += each_subcube_rowsz
+            score_im1_r0, s_im1_r0, y_im1, y_im2, y_im3, _ = leq_class[0]
+            subcube_line_cache = []
+            _avg_si, _avg_hi, _avg_ai, _avg_scores_i = None, None, None, None
+            _cube_lm_krank_ces_i, _cube_krank_scores_i = None, None
+
+            if each_subcube_rowsz == 1:
+                _avg_sim1 = s_im1_r0
+                self.onerow_subcube_cnt += 1
+            else:
+                merged_sim1 = [tup[1] for tup in leq_class[0:1]]
+                np_merged_sim1 = numpy.array(merged_sim1)
+                # arithmetic mean
+                _avg_sim1 = numpy.mean(np_merged_sim1, axis=0)
+            #print _avg_sim1
+            batch_y_im1.append(y_im1)
+            batch_s_im1.append(_avg_sim1)
+            self.push_subcube_approx_cache.append(None)
+
+        np_batch_s_im1 = numpy.array(batch_s_im1, dtype='float32')
+        subcube_num = len(batch_y_im1)
+        ctx = numpy.tile(self.context, [subcube_num, 1])
+        if np_batch_s_im1.shape[0] == 1 and 3 == len(np_batch_s_im1.shape):
+            np_batch_s_im1 = np_batch_s_im1[0]
+        #print np_batch_s_im1.shape
+        next_probs, next_states = self.fn_next(*[batch_y_im1, ctx, np_batch_s_im1])
+        #print next_probs.shape
+        #print next_states.shape
+
+        for which in range(len(eq_classes)):
+            _avg_sim1, leq_class, next_prob, _avg_si = batch_s_im1[which], \
+                    eq_classes[which], next_probs[which], next_states[which]
+            each_subcube_rowsz = len(leq_class)
+            next_prob_flat = next_prob.flatten()
+            _next_krank_wids = part_sort(-next_prob_flat, self.k - len(self.translations))
+            k_avg_loss_flat = -numpy.log(next_prob_flat[_next_krank_wids])
+
+            self.pop_subcube_approx_cache.append((None, _avg_hi, _avg_ai, _avg_si, None,
+                                                  None, _next_krank_wids, k_avg_loss_flat))
+            # add cnt for error The truth value of an array with more than one element is ambiguous
+            subcube = []
+            for i, tup in enumerate(leq_class):
+                subcube.append([tup +
+                                (_avg_sim1,
+                                 None if _cube_lm_krank_ces_i is None else _cube_lm_krank_ces_i[j],
+                                 k_avg_loss_flat[j], 
+                                 wid, i, j, which, each_subcube_rowsz)
+                                for j, wid in enumerate(_next_krank_wids)])
+                subcube_line_cache.append(None)
+
+            #print len(subcube)
+            cube.append(subcube)
+            self.subcube_lines_cache.append(subcube_line_cache)
+
+        self.printCube(cube)
+
         return cube
+
 
     ##################################################################
 
@@ -358,6 +436,7 @@ class WCP(Func):
 
     def Push_heap(self, heap, bidx, citem):
 
+        debug('\n################################ PUSH HEAP ################################')
         score_im1, s_im1, y_im1, y_im2, y_im3, bp, _avg_sim1, \
             _avg_lm_ces_i, _cube_krank_scores_i, yi, iexp, jexp, which, rsz = citem
 
@@ -462,8 +541,7 @@ class WCP(Func):
         each_subcube_colsz, each_subcube_rowsz = [], []
         cube_size = 0
         extheap, ijs_push, prev_pop_ijs = [], [], []
-        self.lqc[8] += nsubcube   # count of total sub-cubes
-        debug('\n################################ PUSH HEAP ################################')
+        self.lqc[9] += nsubcube   # count of total sub-cubes
         #for whichsubcube in xrange(nsubcube if nsubcube < 5 else (self.k if self.k <= 5 else 5)):
         for whichsubcube in xrange(nsubcube):
             subcube = cube[whichsubcube]
@@ -471,7 +549,7 @@ class WCP(Func):
             each_subcube_rowsz.append(rowsz)
             each_subcube_colsz.append(len(subcube[0]))
             # print bidx, rowsz
-            self.lqc[9] += rowsz   # count of total lines in sub-cubes
+            self.lqc[10] += rowsz   # count of total lines in sub-cubes
             # initial heap, starting from the left-top corner (best word) of each subcube
             # real score here ... may adding language model here ...
             # we should calculate the real score in current beam when pushing into heap
@@ -558,7 +636,6 @@ class WCP(Func):
             enough = len(self.beam[bidx]) == (self.k - cnt_transed)
             if enough: return False
 
-            debug('\n################################ PUSH HEAP ################################')
             whichsubcub = cube[which]
             # make sure we do not add repeadedly
             if jexp + 1 < each_subcube_colsz[which] and (iexp, jexp + 1) not in ijs_push[which]:
@@ -573,7 +650,7 @@ class WCP(Func):
                 self.Push_heap(extheap, bidx, down)
         return False
 
-    @exeTime
+    #@exeTime
     def cube_pruning(self):
 
         for bidx in range(1, self.maxlen + 1):
@@ -587,18 +664,19 @@ class WCP(Func):
             self.merge(bidx, eq_classes)
 
             # create cube and generate next beam from cube
-            cube = self.create_cube(bidx, eq_classes)
+            #cube = self.create_cube(bidx, eq_classes)
+            cube = self.create_cube_batch(bidx, eq_classes)
 
             if self.cube_prune(bidx, cube):
-                _log('early stop! see {} samples ending with EOS.'.format(self.k))
+                #_log('early stop! see {} samples ending with EOS.'.format(self.k))
                 avg_bp = format(self.locrt[0] / self.locrt[1], '0.3f')
-                _log('average location of back pointers [{}/{}={}]'.format(
-                    self.locrt[0], self.locrt[1], avg_bp))
+                #_log('average location of back pointers [{}/{}={}]'.format(
+                #    self.locrt[0], self.locrt[1], avg_bp))
                 sorted_samples = sorted(self.translations, key=lambda tup: tup[0])
                 best_sample = sorted_samples[0]
-                _log('translation length(with EOS) [{}]'.format(best_sample[-1]))
-                for sample in sorted_samples:  # tuples
-                    _log('{}'.format(sample))
+                #_log('translation length(with EOS) [{}]'.format(best_sample[-1]))
+                #for sample in sorted_samples:  # tuples
+                #    _log('{}'.format(sample))
 
                 return back_tracking(self.beam, best_sample, False)
 
@@ -613,21 +691,21 @@ class WCP(Func):
 
         # no early stop, back tracking
         avg_bp = format(self.locrt[0] / self.locrt[1], '0.3f')
-        _log('average location of back pointers [{}/{}={}]'.format(
-            self.locrt[0], self.locrt[1], avg_bp))
+        #_log('average location of back pointers [{}/{}={}]'.format(
+        #    self.locrt[0], self.locrt[1], avg_bp))
         if len(self.translations) == 0:
-            _log('no early stop, no candidates ends with EOS, selecting from '
-                'len {} candidates, may not end with EOS.'.format(self.maxlen))
+            #_log('no early stop, no candidates ends with EOS, selecting from '
+            #    'len {} candidates, may not end with EOS.'.format(self.maxlen))
             best_sample = (self.beam[self.maxlen][0][0],) + \
                 self.beam[self.maxlen][0][2:] + (self.maxlen, )
-            _log('translation length(with EOS) [{}]'.format(best_sample[-1]))
+            #_log('translation length(with EOS) [{}]'.format(best_sample[-1]))
             return back_tracking(self.beam, best_sample, False)
         else:
-            _log('no early stop, not enough {} candidates end with EOS, selecting the best '
-                'sample ending with EOS from {} samples.'.format(self.k, len(self.translations)))
+            #_log('no early stop, not enough {} candidates end with EOS, selecting the best '
+            #    'sample ending with EOS from {} samples.'.format(self.k, len(self.translations)))
             sorted_samples = sorted(self.translations, key=lambda tup: tup[0])
             best_sample = sorted_samples[0]
-            _log('translation length(with EOS) [{}]'.format(best_sample[-1]))
-            for sample in sorted_samples:  # tuples
-                _log('{}'.format(sample))
+            #_log('translation length(with EOS) [{}]'.format(best_sample[-1]))
+            #for sample in sorted_samples:  # tuples
+            #    _log('{}'.format(sample))
             return back_tracking(self.beam, best_sample, False)

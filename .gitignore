@@ -37,6 +37,8 @@ log.*
 nohup.out*
 *result*/*
 *log*/*
+cpu*/*
+rst*/*
 data/*
 *nist/*
 models_*

@@ -12,7 +12,7 @@
 		#--model-name ./wmodels/params_e13_upd260000.npz \
 		# Him1   Hi     AiKL
 		#--model-name ./params_e11_upd223091.npz \
-THEANO_FLAGS=mode=FAST_RUN,device=gpu1,floatX=float32,lib.cnmem=2000 python wtrans.py \
+THEANO_FLAGS=mode=FAST_RUN,device=cpu,floatX=float32,lib.cnmem=2000 python wtrans.py \
 		--epoch 11 \
 		--batch 223091 \
 		--search-mode $1 \
