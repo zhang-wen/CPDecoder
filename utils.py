@@ -19,7 +19,7 @@ def _log(s, nl=True):
         sys.stderr.write('{}'.format(s))
     sys.stderr.flush()
 
-DEBUG = False
+DEBUG = True
 def debug(s, nl=True):
     if DEBUG:
         if nl:
@@ -331,7 +331,7 @@ def back_tracking(beam, best_sample_endswith_eos, detail=True):
         if detail:
             _, _, _, _, w, backptr = beam[i][bp]
         else:
-            _, _, w, backptr = beam[i][bp]
+            _, _, w, _, backptr = beam[i][bp]
         #_, _, _, w, backptr = beam[i][bp]
         seq.append(w)
         bp = backptr
@@ -357,10 +357,17 @@ def init_beam(beam, cnt=50, init_score=0.0, init_loss=0.0, init_state=None, deta
     #beam[0].append((init_score, init_pi, init_state, -1, 0))
     # such as: beam[0] is (0.0 (-log(1)), 'Could', 0)
 
+def init_beam_sm(beam, cnt=50, init_score=0.0, init_state=None, init_y_emb_im1=None):
+    del beam[:]
+    for i in range(cnt + 1):
+        ibeam = []  # one beam [] for one char besides start beam
+        beam.append(ibeam)
+    # (sum score i, y_emb_im1, state i, yi, backptr), indicator for the first target word (bos <S>)
+    beam[0].append((init_score, init_state, -1, init_y_emb_im1, 0))
 
 def dec_conf(switchs, k, mode, kl, nprocess, lm, ngram, alpha, beta, valid_set):
     ifvalid, ifbatch, ifscore, ifnorm, ifmv, ifwatch_adist, merge_way, \
-        ifapprox_dist, ifapprox_att, ifadd_lmscore = switchs
+        ifapprox_dist, ifapprox_att, ifadd_lmscore, ifsplit = switchs
     sys.stderr.write(
         '\n.........................decoder config..........................\n')
     if mode == 0:
@@ -385,6 +392,7 @@ def dec_conf(switchs, k, mode, kl, nprocess, lm, ngram, alpha, beta, valid_set):
                      '\n\t totally approximating ? {}'
                      '\n\t Only using approximate attention ? {}'
                      '\n\t Consider lm score ? {}'
+                     '\n\t Split fn_next ? {}'
                      '\n\t Validation set file : {}'
                      '\n\t Language model file : {}'
                      '\n\t Ngrams : {}'
@@ -403,6 +411,7 @@ def dec_conf(switchs, k, mode, kl, nprocess, lm, ngram, alpha, beta, valid_set):
                          True if ifapprox_dist else False,
                          True if ifapprox_att else False,
                          True if ifadd_lmscore else False,
+                         True if ifsplit else False,
                          valid_set if ifvalid else 'None',
                          lm,
                          ngram,

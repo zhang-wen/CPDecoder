@@ -157,6 +157,14 @@ if __name__ == "__main__":
     )
 
     decoder.add_argument(
+        '--ifsplit',
+        dest='ifsplit',
+        type=int,
+        default=0,
+        help='Whether we split the fn_next. (DEFAULT=0)',
+    )
+
+    decoder.add_argument(
         '--m-threshold',
         dest='m_threshold',
         type=float,
@@ -233,7 +241,7 @@ if __name__ == "__main__":
     search_mode = args.search_mode
     switchs = [args.use_valid, args.use_batch, args.use_score, args.use_norm, args.use_mv,
                args.watch_adist, args.merge_way, args.ifapprox_dist, args.ifapprox_att,
-               args.add_lmscore]
+               args.add_lmscore, args.ifsplit]
     valid_set = args.valid_set
     kl = args.m_threshold
     nprocess = args.n_process
@@ -250,7 +258,7 @@ if __name__ == "__main__":
     trans = Translate(**config)
     _log('done')
 
-    _log('build decode funcs: f_init f_nh f_na f_ns f_mo f_ws f_ps f_ce f_next... ', nl=False)
+    _log('build decode funcs: f_init f_nh f_na f_ns f_mo f_ws f_ps f_ce f_next f_emb ... ', nl=False)
     fs = trans.build_sample()
     _log('done')
 
@@ -267,7 +275,9 @@ if __name__ == "__main__":
     tinit = (e - s)
 
     s = time.time()
-    yemb_im1, hi = fs[1](*[y_im1, s_im1])  # * here, why ?
+    #yemb_im1, hi = fs[1](*[y_im1, s_im1])  # * here, why ?
+    yemb_im1 = fs[-1](y_im1)
+    hi = fs[1](*[yemb_im1, s_im1])  # * here, why ?
     e = time.time()
     thi = (e - s)
 

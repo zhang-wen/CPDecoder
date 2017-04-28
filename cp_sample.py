@@ -11,7 +11,8 @@ from multiprocessing import Process, Queue
 from search_mle import mle_trans
 from search_naive import ORI
 from search_bs import NBS
-from search_cp import WCP
+#from search_cp import WCP
+from search_sm import WCP
 
 
 class Translator(object):
@@ -27,8 +28,9 @@ class Translator(object):
 
         self.ori = ORI(fs, switchs, bos_idx, tvcb, tvcb_i2w, k, ptv, ln_alpha, cp_beta)
         self.nbs = NBS(fs, switchs, bos_idx, tvcb, tvcb_i2w, k, ptv, ln_alpha, cp_beta)
-        self.wcp = WCP(fs, switchs, bos_idx, ngram, tvcb, tvcb_i2w, k, thresh, lm, ptv)
+        self.wcp = WCP(fs, switchs, bos_idx, tvcb, tvcb_i2w, k, ptv)
 
+    @exeTime
     def trans_onesent(self, s):
         avg_merges = 0.
         if self.mode == 0:
@@ -41,12 +43,6 @@ class Translator(object):
             trans = self.nbs.beam_search_trans(s)
         elif self.mode == 3:
             self.wcp.lqc = [0] * 11
-            self.wcp.locrt = [0] * 2
-            self.wcp.onerow_subcube_cnt = 0
-            self.wcp.push_cnt = 0
-            self.wcp.pop_cnt = 0
-            self.wcp.down_pop_cnt = 0
-            self.wcp.right_pop_cnt = 0
             avg_merges, trans = self.wcp.cube_prune_trans(s)
         return avg_merges, trans
 

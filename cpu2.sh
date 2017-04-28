@@ -12,6 +12,7 @@
 		#--model-name ./wmodels/params_e13_upd260000.npz \
 		# Him1   Hi     AiKL
 		#--model-name ./params_e11_upd223091.npz \
+#THEANO_FLAGS=mode=FAST_RUN,device=cpu,floatX=float32 python wtrans.py \
 THEANO_FLAGS=mode=FAST_RUN,device=cpu,floatX=float32,lib.cnmem=2000 python wtrans.py \
 		--epoch 11 \
 		--batch 223091 \
@@ -19,7 +20,7 @@ THEANO_FLAGS=mode=FAST_RUN,device=cpu,floatX=float32,lib.cnmem=2000 python wtran
 		--model-name ./params_e11_upd223091_38.80.npz \
 		--beam-size $2 \
 		--use-norm 1 \
-		--use-batch 0 \
+		--use-batch 1 \
 		--use-score 0 \
 		--use-valid 1 \
 		--valid-set $3 \
@@ -29,6 +30,7 @@ THEANO_FLAGS=mode=FAST_RUN,device=cpu,floatX=float32,lib.cnmem=2000 python wtran
         --ifapprox-dist 1 \
         --ifapprox-att 0 \
         --ifadd-lmscore 0 \
+        --ifsplit 0 \
 		--m-threshold 10000.0 \
 		--n-process 10 \
 		--ngram 2 \

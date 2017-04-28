@@ -525,14 +525,18 @@ class Translate(object):
 
         #--------------------------------------------------------------
         y_im1 = T.vector('y_sampler', dtype='int64')
+        y_emb_im1 = self.trg_lookup_table.index(y_im1)
+        f_emb = theano.function([y_im1], y_emb_im1, name='f_emb')
+
+        #t_yemb_im1 = T.tensor3('t_yemb_im1', dtype='float32')
+        t_yemb_im1 = T.matrix('t_yemb_im1', dtype='float32')
         t_stat_im1 = T.matrix('t_stat_im1', dtype='float32')
 
         #--------------------------------------------------------------
         # get next state h1: h_i = rnn(y_{i-1}, s_{i-1})
         # y_emb_im1: embedding of one target word, shape(1, trgw_embsz)
-        y_emb_im1 = self.trg_lookup_table.index(y_im1)
-        hi = self.decoder._step_forward(x_t=y_emb_im1, x_m=None, h_tm1=t_stat_im1)
-        f_nh = theano.function([y_im1, t_stat_im1], [y_emb_im1, hi], name='f_nh')
+        hi = self.decoder._step_forward(x_t=t_yemb_im1, x_m=None, h_tm1=t_stat_im1)
+        f_nh = theano.function([t_yemb_im1, t_stat_im1], hi, name='f_nh')
 
         #--------------------------------------------------------------
         t_hi = T.matrix('t_hi', dtype='float32')
@@ -553,7 +557,6 @@ class Translate(object):
         #--------------------------------------------------------------
         # merge_out = g(y_{i-1}, s_i, a_i)
         t_si = T.matrix('t_si', dtype='float32')
-        t_yemb_im1 = T.matrix('t_yemb_im1', dtype='float32')
         merge_out = self.decoder.merge_out(
             y_emb_im1=t_yemb_im1, s_i=t_si, a_i=t_ai)
         f_mo = theano.function([t_yemb_im1, t_ai, t_si],
@@ -584,8 +587,8 @@ class Translate(object):
         # distribution over target vocab: softmax(energy)
         t_pws = T.matrix('t_pws', dtype='float32')
         #self.logistic.apply_softmax(t_pws)
-        self.logistic.softmax(t_pws)
-        f_ce = theano.function([t_pws], self.logistic.ce_p_y_give_x, name='f_ce')
+        #self.logistic.softmax(t_pws)
+        f_ce = theano.function([t_pws], T.nnet.softmax(t_pws), name='f_ce')
         # next_w(y_emb_im1):    (k-dead_k,)  the last word id of each translate candidate in beam
         # ctx:  (src_sent_len, live_k, src_nhids*2)
         # t_stat_im1:           shape(k-dead_k, trg_nhids)
@@ -598,7 +601,7 @@ class Translate(object):
         outs = [next_probs, next_state]
         f_next = theano.function(inps, outs, name='f_next')
 
-        return [f_init, f_nh, f_na, f_ns, f_mo, f_pws, f_one, f_ce, f_next]
+        return [f_init, f_nh, f_na, f_ns, f_mo, f_pws, f_one, f_ce, f_next, f_emb]
 
     def next_prob_state(self, y_emb_im1, s_im1, ctx, c_x):
         next_state, merge_out = self.decoder.next_state_mout(y_emb_im1, s_im1, ctx, c_x)

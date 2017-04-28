@@ -29,6 +29,7 @@ THEANO_FLAGS=mode=FAST_RUN,device=gpu1,floatX=float32,lib.cnmem=2000 python wtra
         --ifapprox-dist 1 \
         --ifapprox-att 0 \
         --ifadd-lmscore 0 \
+        --ifsplit 1 \
 		--m-threshold 10000.0 \
 		--n-process 10 \
 		--ngram 2 \

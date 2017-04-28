@@ -19,7 +19,7 @@ THEANO_FLAGS=mode=FAST_RUN,device=gpu2,floatX=float32,lib.cnmem=2000 python wtra
 		--model-name ./params_e11_upd223091_38.80.npz \
 		--beam-size $2 \
 		--use-norm 1 \
-		--use-batch 0 \
+		--use-batch 1 \
 		--use-score 0 \
 		--use-valid 1 \
 		--valid-set $3 \
@@ -29,6 +29,7 @@ THEANO_FLAGS=mode=FAST_RUN,device=gpu2,floatX=float32,lib.cnmem=2000 python wtra
         --ifapprox-dist 1 \
         --ifapprox-att 0 \
         --ifadd-lmscore 0 \
+        --ifsplit 0 \
 		--m-threshold 10000.0 \
 		--n-process 10 \
 		--ngram 2 \

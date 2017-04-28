@@ -91,6 +91,7 @@ class WCP(Func):
 
     ##################################################################
 
+    #@exeTime
     def merge(self, bidx, eq_classes):
 
         prevb = self.beam[bidx - 1]
@@ -392,7 +393,6 @@ class WCP(Func):
         ctx = numpy.tile(self.context, [subcube_num, 1])
         if np_batch_s_im1.shape[0] == 1 and 3 == len(np_batch_s_im1.shape):
             np_batch_s_im1 = np_batch_s_im1[0]
-        #print np_batch_s_im1.shape
         next_probs, next_states = self.fn_next(*[batch_y_im1, ctx, np_batch_s_im1])
         #print next_probs.shape
         #print next_states.shape
@@ -664,8 +664,10 @@ class WCP(Func):
             self.merge(bidx, eq_classes)
 
             # create cube and generate next beam from cube
-            #cube = self.create_cube(bidx, eq_classes)
-            cube = self.create_cube_batch(bidx, eq_classes)
+            if self.ifbatch:
+                cube = self.create_cube_batch(bidx, eq_classes)
+            else:
+                cube = self.create_cube(bidx, eq_classes)
 
             if self.cube_prune(bidx, cube):
                 #_log('early stop! see {} samples ending with EOS.'.format(self.k))

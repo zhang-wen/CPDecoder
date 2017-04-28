@@ -12,21 +12,22 @@
 		#--model-name ./wmodels/params_e13_upd260000.npz \
 		# Him1   Hi     AiKL
 		#--model-name ./params_e11_upd223091.npz \
-THEANO_FLAGS=mode=FAST_RUN,device=gpu0,floatX=float32,lib.cnmem=2000 python wtrans.py \
+#THEANO_FLAGS=mode=FAST_RUN,device=cpu,floatX=float32 python wtrans.py \
+THEANO_FLAGS=mode=FAST_RUN,device=cpu,floatX=float32,lib.cnmem=2000 python wtrans.py \
 		--epoch 11 \
 		--batch 223091 \
 		--search-mode $1 \
 		--model-name ./params_e11_upd223091_38.80.npz \
 		--beam-size $2 \
 		--use-norm 1 \
-		--use-batch 1 \
+		--use-batch 0 \
 		--use-score 0 \
-		--use-valid 0 \
+		--use-valid 1 \
 		--valid-set $3 \
 		--use-mv 0 \
 		--ifwatch-adist 0 \
 		--merge-way 'Him1' \
-        --ifapprox-dist 0 \
+        --ifapprox-dist 1 \
         --ifapprox-att 0 \
         --ifadd-lmscore 0 \
         --ifsplit 0 \

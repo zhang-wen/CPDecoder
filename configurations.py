@@ -98,7 +98,8 @@ def get_config_cs2en():
     config['output_val_set'] = True
 
     # Validation and test file dir
-    config['val_tst_dir'] = '/home/wen/3.corpus/allnist_stanfordseg_jiujiu/'
+    #config['val_tst_dir'] = '/home/wen/3.corpus/allnist_stanfordseg_jiujiu/'
+    config['val_tst_dir'] = '/scratch2/wzhang/3.corpus/2.mt/nist-all/allnist_stanfordseg_jiujiu/'
     # for testing 50 sentence of nist02
     #config['val_tst_dir'] = '/scratch2/wzhang/3.corpus/2.mt/nist-all/test/'
 
